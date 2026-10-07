@@ -1,0 +1,36 @@
+import mongoose from 'mongoose';
+
+const generationSchema = new mongoose.Schema(
+  {
+    projectId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Project',
+      required: true,
+      index: true,
+    },
+    screenshot: {
+      type: String,
+    },
+    uiSpecification: {
+      type: mongoose.Schema.Types.Mixed,
+    },
+    generatedCode: {
+      type: String,
+    },
+    prompt: {
+      type: String,
+    },
+    model: {
+      type: String,
+    },
+    status: {
+      type: String,
+      default: 'pending',
+    },
+  },
+  { timestamps: true },
+);
+
+const Generation = mongoose.model('Generation', generationSchema);
+
+export default Generation;
