@@ -5,7 +5,6 @@ const generationSchema = new mongoose.Schema(
     projectId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Project',
-      required: true,
       index: true,
     },
     screenshot: {
@@ -26,6 +25,14 @@ const generationSchema = new mongoose.Schema(
     status: {
       type: String,
       default: 'pending',
+    },
+    framework: {
+      type: String,
+      default: 'react',
+    },
+    styling: {
+      type: String,
+      default: 'tailwind',
     },
   },
   { timestamps: true },

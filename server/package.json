@@ -10,7 +10,8 @@
   "dependencies": {
     "dotenv": "latest",
     "express": "latest",
-    "mongoose": "latest"
+    "mongoose": "latest",
+    "multer": "^2.4.0"
   },
   "devDependencies": {
     "nodemon": "latest"

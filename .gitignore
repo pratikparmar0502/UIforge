@@ -13,6 +13,10 @@ coverage/
 *.log
 npm-debug.log*
 
+# Local screenshot uploads
+server/uploads/*
+!server/uploads/.gitkeep
+
 # Editor and OS files
 .DS_Store
 Thumbs.db
