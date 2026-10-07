@@ -1,0 +1,11 @@
+{
+  "name": "uiforge",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AI-based screenshot-to-UI generation system",
+  "workspaces": ["client", "server"],
+  "scripts": {
+    "dev:client": "npm run dev --workspace=client",
+    "dev:server": "npm run dev --workspace=server"
+  }
+}
