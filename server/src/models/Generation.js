@@ -1,12 +1,19 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-export const GENERATION_STATUSES = ['pending', 'analyzing', 'analyzed', 'failed'];
+export const GENERATION_STATUSES = [
+  "pending",
+  "analyzing",
+  "analyzed",
+  "generating",
+  "completed",
+  "failed",
+];
 
 const generationSchema = new mongoose.Schema(
   {
     projectId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Project',
+      ref: "Project",
       index: true,
     },
     screenshot: {
@@ -27,23 +34,23 @@ const generationSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: GENERATION_STATUSES,
-      default: 'pending',
+      default: "pending",
     },
     analysisError: {
       type: String,
     },
     framework: {
       type: String,
-      default: 'react',
+      default: "react",
     },
     styling: {
       type: String,
-      default: 'tailwind',
+      default: "tailwind",
     },
   },
   { timestamps: true },
 );
 
-const Generation = mongoose.model('Generation', generationSchema);
+const Generation = mongoose.model("Generation", generationSchema);
 
 export default Generation;
