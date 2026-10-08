@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 
+export const GENERATION_STATUSES = ['pending', 'analyzing', 'analyzed', 'failed'];
+
 const generationSchema = new mongoose.Schema(
   {
     projectId: {
@@ -24,7 +26,11 @@ const generationSchema = new mongoose.Schema(
     },
     status: {
       type: String,
+      enum: GENERATION_STATUSES,
       default: 'pending',
+    },
+    analysisError: {
+      type: String,
     },
     framework: {
       type: String,

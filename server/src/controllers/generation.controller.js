@@ -1,8 +1,17 @@
 import mongoose from 'mongoose';
 import Generation from '../models/Generation.js';
 import Project from '../models/Project.js';
-import { createPendingGeneration } from '../services/generation.service.js';
-import { removeUploadedFile } from '../utils/file.utils.js';
+import { analyzeScreenshot } from '../services/ai/ai.service.js';
+import {
+  createPendingGeneration,
+  GENERATION_STATUS,
+  markGenerationAnalyzed,
+  markGenerationAnalyzing,
+  markGenerationFailed,
+} from '../services/generation.service.js';
+import { parseAndValidateUiSpecification } from '../services/ui-specification.validator.js';
+import { AppError } from '../utils/app-error.js';
+import { readScreenshotFile, removeUploadedFile } from '../utils/file.utils.js';
 
 function toGenerationResponse(generation) {
   return {
@@ -12,7 +21,10 @@ function toGenerationResponse(generation) {
     status: generation.status,
     framework: generation.framework,
     styling: generation.styling,
+    uiSpecification: generation.uiSpecification ?? null,
+    model: generation.model ?? null,
     createdAt: generation.createdAt,
+    updatedAt: generation.updatedAt,
   };
 }
 
@@ -91,5 +103,83 @@ export async function getGenerationById(request, response, next) {
     });
   } catch (error) {
     return next(error);
+  }
+}
+
+export async function analyzeGeneration(request, response, next) {
+  const { id } = request.params;
+  let analysis;
+  let lockedForAnalysis = false;
+
+  try {
+    if (!mongoose.isValidObjectId(id)) {
+      throw new AppError('Invalid generation ID.', 400, 'INVALID_GENERATION_ID');
+    }
+
+    const generation = await Generation.findById(id);
+
+    if (!generation) {
+      throw new AppError('Generation not found.', 404, 'GENERATION_NOT_FOUND');
+    }
+
+    if (generation.status === GENERATION_STATUS.analyzing) {
+      throw new AppError(
+        'Analysis is already in progress for this generation.',
+        409,
+        'ANALYSIS_IN_PROGRESS',
+      );
+    }
+
+    if (!generation.screenshot) {
+      throw new AppError(
+        'Generation does not have a screenshot to analyze.',
+        400,
+        'SCREENSHOT_MISSING',
+      );
+    }
+
+    const lockedGeneration = await markGenerationAnalyzing(id);
+
+    if (!lockedGeneration) {
+      throw new AppError(
+        'Analysis is already in progress for this generation.',
+        409,
+        'ANALYSIS_IN_PROGRESS',
+      );
+    }
+
+    lockedForAnalysis = true;
+
+    const imageBuffer = await readScreenshotFile(generation.screenshot);
+    analysis = await analyzeScreenshot({ imageBuffer });
+    const uiSpecification = parseAndValidateUiSpecification(analysis.text);
+    const updatedGeneration = await markGenerationAnalyzed(id, {
+      uiSpecification,
+      prompt: analysis.prompt,
+      model: analysis.model,
+    });
+
+    return response.status(200).json({
+      message: 'Screenshot analyzed successfully.',
+      generation: toGenerationResponse(updatedGeneration),
+    });
+  } catch (error) {
+    if (lockedForAnalysis) {
+      await markGenerationFailed(id, {
+        analysisError:
+          error instanceof AppError
+            ? `${error.code ?? 'ANALYSIS_FAILED'}: ${error.message}`
+            : error.message || 'AI analysis failed.',
+        prompt: analysis?.prompt,
+        model: analysis?.model,
+      });
+    }
+
+    if (error instanceof AppError) {
+      return next(error);
+    }
+
+    console.error('Screenshot analysis failed:', error);
+    return next(new AppError('AI analysis failed.', 502, 'ANALYSIS_FAILED'));
   }
 }
