@@ -50,7 +50,17 @@ export function createOllamaProvider() {
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
     try {
-      const body = { model, stream: false, think: false, messages };
+      const body = {
+        model,
+        stream: false,
+        think: false,
+        messages,
+
+        // Allow the model to generate a longer JSON response.
+        options: {
+          num_predict: 4096,
+        },
+      };
 
       if (format) {
         body.format = format;
@@ -70,6 +80,15 @@ export function createOllamaProvider() {
 
       const payload = JSON.parse(response.body);
       const text = payload?.message?.content;
+
+      // Diagnostic information from Ollama
+      console.log("Ollama generation diagnostics:", {
+        done: payload?.done,
+        doneReason: payload?.done_reason,
+        promptTokens: payload?.prompt_eval_count,
+        generatedTokens: payload?.eval_count,
+        responseCharacters: typeof text === "string" ? text.length : 0,
+      });
 
       if (typeof text !== "string" || !text.trim()) {
         throw new AppError(`${label} returned an empty response.`, 422, "INVALID_AI_RESPONSE");

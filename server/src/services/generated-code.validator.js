@@ -47,14 +47,18 @@ export function validateGeneratedCode(rawText) {
     throw invalidCode("Response was a full HTML document, not a React component.");
   }
 
-  const hasComponent = /export\s+default|function\s+[A-Z]\w*\s*\(|const\s+[A-Z]\w*\s*=/.test(code);
-  const hasJsx = /<[A-Za-z][\w.-]*[\s>/]/.test(code);
+  const hasComponent =
+    /export\s+default\b/.test(code) ||
+    /\bfunction\s+[A-Z]\w*\s*\(/.test(code) ||
+    /\bconst\s+[A-Z]\w*\s*=/.test(code);
+
+  const hasJsx = /<[A-Za-z][\w.-]*(?:\s|\/?>)/.test(code);
 
   if (!hasComponent || !hasJsx) {
     throw invalidCode("Response did not look like a React component.");
   }
 
-  if (!/className\s*=/.test(code)) {
+  if (!/\bclassName\s*=/.test(code)) {
     throw invalidCode("Response did not use Tailwind className styling.");
   }
 

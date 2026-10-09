@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { analyzeGeneration, createGeneration } from "./services/api";
+import { analyzeGeneration, createGeneration, generateCode } from "./services/api";
 
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
 
@@ -12,6 +12,9 @@ export default function App() {
   const [generationResult, setGenerationResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationCode, setGenerationCode] = useState(null);
+  const [generationModel, setGenerationModel] = useState(null);
 
   const fileInputRef = useRef(null);
 
@@ -25,6 +28,8 @@ export default function App() {
     setError(null);
     setGenerationResult(null);
     setAnalysisResult(null);
+    setGenerationCode(null);
+    setGenerationModel(null);
 
     if (!file) return;
 
@@ -69,6 +74,8 @@ export default function App() {
     setError(null);
     setGenerationResult(null);
     setAnalysisResult(null);
+    setGenerationCode(null);
+    setGenerationModel(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -133,6 +140,40 @@ export default function App() {
     }
   };
 
+  const handleGenerateCode = async () => {
+    if (!generationResult?.id) {
+      setError("Upload a screenshot before generating code.");
+      return;
+    }
+
+    if (!analysisResult?.specification) {
+      setError("Analyze the screenshot before generating code.");
+      return;
+    }
+
+    setIsGenerating(true);
+    setError(null);
+    setGenerationCode(null);
+    setGenerationModel(null);
+
+    try {
+      const response = await generateCode(generationResult.id);
+      const generation = response?.generation;
+      const code = generation?.generatedCode;
+
+      if (typeof code !== "string" || !code.trim()) {
+        throw new Error("The server response did not contain generated React code.");
+      }
+
+      setGenerationCode(code);
+      setGenerationModel(generation?.model || null);
+    } catch (err) {
+      setError(err?.message || "React code generation failed.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Header */}
@@ -144,7 +185,7 @@ export default function App() {
           <span className="text-xl font-bold tracking-tight text-white">UIForge</span>
         </div>
         <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-medium">
-          M06.3 • AI Screenshot Analysis
+          M06.4 • React Code Generation
         </span>
       </header>
 
@@ -347,6 +388,73 @@ export default function App() {
                   </pre>
                 </details>
               </div>
+            </section>
+          )}
+
+          {analysisResult && !generationCode && (
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-slate-400">
+                Generate a React component styled with Tailwind CSS from this saved UI
+                specification.
+              </p>
+              <button
+                type="button"
+                onClick={handleGenerateCode}
+                disabled={isGenerating || isAnalyzing || isLoading}
+                className="shrink-0 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isGenerating ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Generating React code...
+                  </span>
+                ) : (
+                  "Generate React Code"
+                )}
+              </button>
+            </div>
+          )}
+
+          {generationCode && (
+            <section className="mt-6 space-y-3" aria-live="polite">
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4">
+                <p className="font-semibold text-emerald-400">React code generated successfully</p>
+                <p className="mt-1 text-sm text-emerald-200/80">
+                  Framework: React · Styling: Tailwind CSS
+                  {generationModel ? ` · Model: ${generationModel}` : ""}
+                </p>
+              </div>
+              <div className="overflow-hidden rounded-lg border border-slate-700 bg-slate-950/70">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-4 py-3">
+                  <h2 className="font-semibold text-slate-100">Generated App.jsx</h2>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (navigator.clipboard?.writeText) {
+                        navigator.clipboard.writeText(generationCode).catch(() => {
+                          setError(
+                            "Could not copy code automatically. Select and copy it manually.",
+                          );
+                        });
+                      } else {
+                        setError(
+                          "Clipboard access is unavailable. Select and copy the code manually.",
+                        );
+                      }
+                    }}
+                    className="rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-200 transition hover:bg-slate-800"
+                  >
+                    Copy code
+                  </button>
+                </div>
+                <pre className="max-h-128 overflow-auto p-4 text-xs leading-5 text-slate-200">
+                  <code>{generationCode}</code>
+                </pre>
+              </div>
+              <p className="text-xs leading-5 text-slate-500">
+                Review the generated component before using it in an application. The code is
+                displayed as text and is not executed in this page.
+              </p>
             </section>
           )}
         </div>
